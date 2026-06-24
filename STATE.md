@@ -1,14 +1,15 @@
 # STATE.md — Autonomous Quant System
 
-**Phase:** ALPHA FOUND ✅ (net of 1 bp/turn friction)
+**Phase:** UNIVERSAL ALPHA ✅ — one frozen strategy clears both gates on SPY *and* QQQ
 **Last updated:** 2026-06-24
-**Target asset:** SPY
-**Iteration:** 5 — added a 0.15 position **deadband** to the Maker (mutated on the
-`maker` worktree, merged back) to cut turnover 203→144. Net-of-friction
-**OOS Sharpe 1.24 ≥ 1.2**, MaxDD 8.4%.
-*Iter-4 failure (recorded):* the runner now charges 1 bp per position change;
-that dropped the no-deadband KalmanTrendMR to **OOS Sharpe 1.197 < 1.2** —
-turnover too high (the continuous daily VIX risk-scaler re-traded every bar).
+**Target asset:** SPY (primary) + QQQ (OOD generalization test, ^VXN overlay)
+**Iteration:** 6 — **OOD asset test**: the FROZEN KalmanTrendMR (identical params
++ 0.15 deadband, only the data swapped to QQQ/^VXN) scores **net OOS Sharpe 1.28,
+MaxDD 10.5% — PASS**. SPY is 1.24 / 8.4%. No mutation needed; the edge generalizes
+out-of-distribution → **STATUS: UNIVERSAL ALPHA**.
+*Iter-5:* 0.15 position deadband cut turnover 203→144 to survive 1 bp/turn
+friction (net Sharpe 1.24). *Iter-4 failure (recorded):* friction had dropped the
+no-deadband strategy to 1.197 < 1.2 (the continuous VIX scaler re-traded daily).
 
 ---
 

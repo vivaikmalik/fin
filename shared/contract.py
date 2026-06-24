@@ -11,8 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Any
 import json
+import os
 
-ASSET = "SPY"
+# Traded universe. Env-overridable so the SAME strategy can be tested OOD on
+# another asset (e.g. QQQ/^VXN) without touching strategy logic or parameters.
+ASSET = os.environ.get("QUANT_ASSET", "SPY")
+VOL = os.environ.get("QUANT_VOL", "^VIX")   # implied-vol index paired with ASSET
 
 # In-sample / out-of-sample split. Checker judges OOS only.
 TRAIN_END = "2018-12-31"      # everything <= this is in-sample

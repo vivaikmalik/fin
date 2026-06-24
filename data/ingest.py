@@ -6,7 +6,7 @@ single-asset daily research. Cache to data/cache to avoid re-download.
 from __future__ import annotations
 import os
 import pandas as pd
-from shared.contract import ASSET
+from shared.contract import ASSET, VOL
 
 CACHE = "data/cache"
 
@@ -43,9 +43,9 @@ def load_prices(asset: str = ASSET, start: str = "2005-01-01") -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    # SPY = traded asset; ^VIX = its implied-vol risk signal (Maker risk overlay).
+    # ASSET = traded asset; VOL = its implied-vol risk signal (Maker risk overlay).
     ok = True
-    for asset in (ASSET, "^VIX"):
+    for asset in (ASSET, VOL):
         df = load_prices(asset)
         n_null = int(df["close"].isna().sum())
         print(f"{asset}: rows={len(df)} "

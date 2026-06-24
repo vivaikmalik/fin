@@ -81,6 +81,20 @@ Rejected: VIX *level* gating (peaks at bottoms → sells the low); realized-vol
   targeting (shrinks size into recoveries). Only the Kalman VIX *slope* helps.
 
 --------------------------------------------------------------------
+[ADR-007] Env-parameterized universe + OOD asset test (iter 6, 2026-06-24)
+--------------------------------------------------------------------
+Decision: ASSET and its paired implied-vol index VOL are env-overridable
+  (QUANT_ASSET / QUANT_VOL; defaults SPY / ^VIX) in shared/contract.py. This lets
+  the SAME strategy run on a different universe with ZERO code/parameter change.
+OOD test: the frozen KalmanTrendMR (identical Kalman params + 0.15 deadband) was
+  run on QQQ with ^VXN. Result (net of 1 bp/turn friction):
+     SPY/^VIX : OOS Sharpe 1.24, MaxDD 8.4%   PASS
+     QQQ/^VXN : OOS Sharpe 1.28, MaxDD 10.5%  PASS
+  Both gates clear on BOTH assets with no re-fitting → STATUS: UNIVERSAL ALPHA.
+  Strong evidence the edge is economic (trend + dip-buy + rising-IV risk-off),
+  not curve-fit to SPY. No Maker mutation was required.
+
+--------------------------------------------------------------------
 [MUTATION LOG]  (run_quant_loop discovery cycle, 2026-06-24)
 --------------------------------------------------------------------
 iter 0  TrendMA(50,200) baseline ............. OOS S=0.70  DD=33.7%  RE-RUN

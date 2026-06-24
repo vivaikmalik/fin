@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from data.ingest import load_prices
 from maker.strategy_template import Strategy
-from shared.contract import SIGNAL_PATH
+from shared.contract import SIGNAL_PATH, ASSET, VOL
 
 
 def _llt_trend(logp: np.ndarray, q_level: float, q_trend: float, r: float = 1e-4) -> np.ndarray:
@@ -86,9 +86,9 @@ class KalmanTrendMR(Strategy):
         mr = np.clip(-z, 0.0, 1.0) * (trend > 0)
         blend = np.clip(self.W_TREND * trend + (1 - self.W_TREND) * mr, 0.0, 1.0)
 
-        # 3. Risk overlay: de-risk when the Kalman ^VIX slope is rising.
-        vix = load_prices("^VIX")["close"].reindex(c.index).ffill().bfill().values
-        vslope = _llt_trend(vix, self.VIX_Q_LEVEL, self.VIX_Q_TREND, r=1.0)
+        # 3. Risk overlay: de-risk when the Kalman implied-vol (VOL) slope is rising.
+        vol = load_prices(VOL)["close"].reindex(c.index).ffill().bfill().values
+        vslope = _llt_trend(vol, self.VIX_Q_LEVEL, self.VIX_Q_TREND, r=1.0)
         vstd = pd.Series(vslope, index=c.index).rolling(252, min_periods=60).std().bfill().values
         risk = 1.0 - self.VIX_CUT * np.clip(vslope / vstd, 0.0, 1.0)  # in [0.4, 1.0]
 
@@ -99,7 +99,7 @@ class KalmanTrendMR(Strategy):
 
 
 def main() -> None:
-    prices = load_prices()
+    prices = load_prices(ASSET)
     sig = KalmanTrendMR().signal(prices).rename("position")
     sig.to_frame().to_parquet(SIGNAL_PATH)
     print(f"wrote {len(sig)} signals -> {SIGNAL_PATH}")

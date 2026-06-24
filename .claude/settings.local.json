@@ -6,7 +6,9 @@
       "Bash(git config *)",
       "Bash(git add *)",
       "Bash(git -c commit.gpgsign=false commit -q -m 'Scaffold autonomous quant system: Maker/Checker isolation + contract *)",
-      "Bash(git worktree *)"
+      "Bash(git worktree *)",
+      "Bash(py --version)",
+      "Bash(python -c \"import pandas, numpy, pyarrow, yfinance\")"
     ]
   }
 }
