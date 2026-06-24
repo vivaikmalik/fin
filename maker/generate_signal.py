@@ -47,6 +47,18 @@ def _kalman_level(logp: np.ndarray, q: float, r: float = 1.0) -> np.ndarray:
     return level
 
 
+def _deadband(target: np.ndarray, band: float) -> np.ndarray:
+    """Hold the current position; only re-trade to a new target once it moves
+    >= band. Suppresses the daily micro-rebalances (mostly from the continuous
+    VIX risk-scaler) that would otherwise bleed away to transaction costs."""
+    held = np.empty(len(target)); cur = 0.0
+    for t in range(len(target)):
+        if abs(target[t] - cur) >= band:
+            cur = target[t]
+        held[t] = cur
+    return held
+
+
 class KalmanTrendMR(Strategy):
     name = "kalman_trend_mr_blend"
 
@@ -58,6 +70,7 @@ class KalmanTrendMR(Strategy):
     VIX_Q_LEVEL = 2e-4   # Kalman on ^VIX: level / trend process noise
     VIX_Q_TREND = 2e-3
     VIX_CUT = 0.6        # max de-risking when implied vol is rising fast
+    BAND = 0.15          # position deadband: re-trade only on moves > 15% notional
 
     def signal(self, prices: pd.DataFrame) -> pd.Series:
         c = prices["close"].astype(float)
@@ -79,8 +92,9 @@ class KalmanTrendMR(Strategy):
         vstd = pd.Series(vslope, index=c.index).rolling(252, min_periods=60).std().bfill().values
         risk = 1.0 - self.VIX_CUT * np.clip(vslope / vstd, 0.0, 1.0)  # in [0.4, 1.0]
 
-        # 4. Final position: long/flat, shifted 1 bar (trade next bar, no look-ahead).
-        pos = np.clip(blend * risk, 0.0, 1.0)
+        # 4. Deadband to cut turnover (survive 1 bp/turn friction), then shift 1
+        #    bar (trade next bar, no look-ahead).
+        pos = _deadband(np.clip(blend * risk, 0.0, 1.0), self.BAND)
         return pd.Series(pos, index=c.index).shift(1).fillna(0.0)
 
 
