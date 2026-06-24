@@ -1,9 +1,14 @@
 # STATE.md — Autonomous Quant System
 
-**Phase:** ALPHA FOUND ✅ (verified by isolated Checker)
+**Phase:** ALPHA FOUND ✅ (net of 1 bp/turn friction)
 **Last updated:** 2026-06-24
 **Target asset:** SPY
-**Iteration:** 3 — PASS: OOS Sharpe 1.21 ≥ 1.2, MaxDD 8.4% ≤ 15%. See WINNER.md.
+**Iteration:** 5 — added a 0.15 position **deadband** to the Maker (mutated on the
+`maker` worktree, merged back) to cut turnover 203→144. Net-of-friction
+**OOS Sharpe 1.24 ≥ 1.2**, MaxDD 8.4%.
+*Iter-4 failure (recorded):* the runner now charges 1 bp per position change;
+that dropped the no-deadband KalmanTrendMR to **OOS Sharpe 1.197 < 1.2** —
+turnover too high (the continuous daily VIX risk-scaler re-traded every bar).
 
 ---
 
@@ -44,10 +49,11 @@ checker.verify         ◄──────┘  reads JSON ONLY, never maker.*
 `maker/generate_signal.py :: KalmanTrendMR` — three causal Kalman filters:
 1. multi-speed Kalman local-linear-trend ENSEMBLE → long/flat direction;
 2. Kalman-level MEAN-REVERSION sleeve → buy dips, uptrend-gated (blend 0.6/0.4);
-3. Kalman ^VIX-slope RISK OVERLAY → de-risk when implied vol is rising.
-Position long/flat in [0,1], shifted 1 bar. OOS Sharpe 1.21, MaxDD 8.4%.
-Note: defensive (avg pos 0.44) — wins on risk-adjusted return, not raw return
-(OOS +77% vs SPY +227%).
+3. Kalman ^VIX-slope RISK OVERLAY → de-risk when implied vol is rising;
+4. 0.15 position DEADBAND → re-trade only on moves >15% notional (turnover/cost).
+Position long/flat in [0,1], shifted 1 bar. **Net-of-friction OOS Sharpe 1.24,
+MaxDD 8.4%** (1 bp/turn). Defensive (avg pos ~0.44) — wins on risk-adjusted
+return, not raw return.
 
 ## How to Run
 ```bash
@@ -74,6 +80,9 @@ not repeat the same mathematical flaw.)*
   sign-ensemble + MR blend. Don't revisit.
 - Robust ceiling on **SPY close alone** is ~1.15; crossing 1.2 required the
   ^VIX risk signal. See memory `spy-kalman-sharpe-ceiling`.
+- **Friction (iter 4)**: 1 bp/turn costs ~0.014 Sharpe (1.211→1.197). The
+  continuous VIX risk-scaler re-trades a little EVERY bar. Fix = deadband on the
+  final position (only re-trade when target moves > band) → fewer, larger trades.
 
 ## Next Action
 None — loop terminated at ALPHA FOUND. To extend: add transaction-cost modelling
