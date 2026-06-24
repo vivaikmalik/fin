@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+data/cache/
+backtests/results/*.json
+checker/verdict.json
+logs/*.log
+.venv/

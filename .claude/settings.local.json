@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(mkdir -p maker checker data/cache backtests/results logs shared)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git -c commit.gpgsign=false commit -q -m 'Scaffold autonomous quant system: Maker/Checker isolation + contract *)",
+      "Bash(git worktree *)"
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+=== ARCHITECTURE DECISIONS LOG ===
+Project: Autonomous Self-Improving Quant System
+Architect: Claude (Lead Architect, per CLAUDE.md §1)
+Initialized: 2026-06-24
+
+--------------------------------------------------------------------
+[ADR-001] Language / Tech Stack
+--------------------------------------------------------------------
+Decision: Python 3 end-to-end (NumPy + Pandas + PyArrow).
+Rationale:
+  - Target is daily-bar SPY research, not sub-microsecond execution.
+    Vectorized NumPy/Pandas backtests on ~5000 daily bars run in
+    milliseconds — Rust/C++ would be premature optimization (CLAUDE.md §2).
+  - Pandas gives fast iteration on alpha logic for the Maker.
+  - NumPy gives clean, dependency-light risk math for the Checker.
+Rejected:
+  - Rust Maker: only justified at tick/HFT scale. Revisit if/when the
+    system moves to intraday sub-second signals.
+
+--------------------------------------------------------------------
+[ADR-002] Data Layer
+--------------------------------------------------------------------
+Decision: Parquet (PyArrow) files under data/cache, sourced via yfinance.
+Rationale:
+  - Columnar, compressed, ~10x smaller and faster to load than CSV.
+  - HDF5 / time-series DB rejected: overkill for single-asset daily data.
+  - Local cache makes the loop deterministic and offline-repeatable.
+
+--------------------------------------------------------------------
+[ADR-003] Maker/Checker Isolation (CLAUDE.md §5)
+--------------------------------------------------------------------
+Decision: Three-layer isolation.
+  1. CODE boundary  - The neutral runner (backtests/runner.py) is the ONLY
+     consumer of Maker output. checker/verify.py imports only
+     shared.contract + checker.metrics; it never imports maker.*.
+  2. DATA contract  - Communication is files only:
+        maker  -> data/signals.parquet            (positions in [-1,1])
+        runner -> backtests/results/backtest_results.json (OOS math output)
+        checker-> checker/verdict.json             (pass/fail + reasons)
+     The Checker physically receives only mathematical output, never code.
+  3. PROCESS boundary - loop.py runs each stage as a separate subprocess;
+     no shared memory between Maker and Checker.
+  + Git worktree: the Maker mutates strategy logic on an isolated branch
+    (worktree at ../quant_maker, branch `maker`), keeping experimental
+    signal code off the verification mainline.
+
+--------------------------------------------------------------------
+[ADR-004] Success Criteria (CLAUDE.md §4, §6)
+--------------------------------------------------------------------
+Decision: A strategy PASSES only if, on out-of-sample data:
+    OOS Sharpe >= 1.2  AND  Max Drawdown <= 15%.
+  - In-sample / OOS split: TRAIN_END = 2018-12-31 (OOS = 2019-present).
+  - Defined centrally in shared/contract.py so Maker and Checker agree
+    without coupling.
+
+--------------------------------------------------------------------
+[ADR-005] Directory Structure
+--------------------------------------------------------------------
+  maker/      - alpha strategies + signal generation (template + active)
+  checker/    - risk metrics + verifier (reads JSON only)
+  backtests/  - neutral engine + results/  (the isolation boundary)
+  data/       - ingestion + parquet cache
+  shared/     - the cross-cutting data contract (schemas + thresholds)
+  logs/       - execution & failure logs
+  loop.py     - orchestrator (subprocess-isolated stages)
+  STATE.md    - live system state / loop memory
+
+--------------------------------------------------------------------
+[MUTATION LOG]  (run_quant_loop appends iterations below)
+--------------------------------------------------------------------
+(none yet — placeholder TrendMA(50,200) baseline in place)
