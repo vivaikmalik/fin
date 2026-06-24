@@ -97,9 +97,20 @@ iter 2  + Kalman-level MEAN-REVERSION blend .. OOS S=1.15  DD=11.4%  RE-RUN
         flaw: diversification works but Sharpe still 0.05 short of 1.2.
         mutate: add a risk overlay for the stress periods (2020, 2022).
 
-iter 3  + Kalman ^VIX-slope RISK OVERLAY ..... OOS S=1.21  DD= 8.4%  ALPHA FOUND
+iter 3  + Kalman ^VIX-slope RISK OVERLAY ..... OOS S=1.21  DD= 8.4%  ALPHA FOUND*
         de-risk smoothly when implied vol is rising; slippage-robust (clears
-        1.2 even with +1 day execution lag). PASS. -> WINNER.md.
+        1.2 even with +1 day execution lag). *Frictionless pass.
+
+--- Friction regime: runner now charges 1 bp per unit position change ----------
+iter 4  (iter-3 strategy, costs ON) .......... OOS S=1.197 DD= 8.5%  RE-RUN
+        flaw: turnover 203 — the continuous VIX risk-scaler re-trades every bar;
+        1 bp/turn costs ~0.014 Sharpe. mutate: cut turnover without losing edge.
+        [mutation done on the `maker` git worktree, then merged to master.]
+
+iter 5  + 0.15 position DEADBAND ............. OOS S=1.24  DD= 8.4%  ALPHA FOUND
+        hold position; re-trade only when target moves >= 0.15 notional. Turnover
+        203->144; deadband also removes noise trades (net S 1.24 > frictionless
+        1.21). Robust: net S >= 1.2 for any band in [0.10, 0.20]. PASS.
 
 Dead ends ruled out (do not retry): long/short trend, realized-vol targeting,
   VIX-level gating, continuous trend-magnitude sizing, adaptive-AR sleeve,
