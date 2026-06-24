@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 data/cache/
+data/signals.parquet
 backtests/results/*.json
 checker/verdict.json
 logs/*.log

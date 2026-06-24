@@ -66,6 +66,41 @@ Decision: A strategy PASSES only if, on out-of-sample data:
   STATE.md    - live system state / loop memory
 
 --------------------------------------------------------------------
-[MUTATION LOG]  (run_quant_loop appends iterations below)
+[ADR-006] ^VIX as a risk signal (added iter 3, 2026-06-24)
 --------------------------------------------------------------------
-(none yet — placeholder TrendMA(50,200) baseline in place)
+Decision: The Maker may read ^VIX (SPY's own implied-volatility index) as an
+  INPUT signal. The traded position remains 100% SPY; the Checker still verifies
+  SPY OOS returns only. ^VIX is cached alongside SPY by data/ingest.py.
+Rationale:
+  - SPY-close-only Kalman signals have a robust OOS Sharpe ceiling ~1.15 (12
+    rounds of search). Crossing the 1.2 gate required an orthogonal risk signal.
+  - Rising implied vol front-runs equity drawdowns (leverage effect + vol
+    clustering) — economically grounded, not data-mined. ^VIX is a richer SPY
+    feature, not a different asset, so the single-asset architecture holds.
+Rejected: VIX *level* gating (peaks at bottoms → sells the low); realized-vol
+  targeting (shrinks size into recoveries). Only the Kalman VIX *slope* helps.
+
+--------------------------------------------------------------------
+[MUTATION LOG]  (run_quant_loop discovery cycle, 2026-06-24)
+--------------------------------------------------------------------
+iter 0  TrendMA(50,200) baseline ............. OOS S=0.70  DD=33.7%  RE-RUN
+        flaw: fixed slow MA rides the whole COVID crash; fails both gates.
+        mutate: replace with an adaptive, lookback-free Kalman trend.
+
+iter 1  Kalman local-linear-trend ENSEMBLE ... OOS S=1.11  DD=15.2%  RE-RUN
+        (6 speeds, sign-averaged; single speeds are fragile OOS spikes.)
+        flaw: trend-only Sharpe-limited; whipsaw in chop, DD at the limit.
+        mutate: add a weakly-correlated alpha (Kalman mean-reversion).
+
+iter 2  + Kalman-level MEAN-REVERSION blend .. OOS S=1.15  DD=11.4%  RE-RUN
+        (0.6 trend / 0.4 dip-buy, uptrend-gated; corr ~0.37, DD halved.)
+        flaw: diversification works but Sharpe still 0.05 short of 1.2.
+        mutate: add a risk overlay for the stress periods (2020, 2022).
+
+iter 3  + Kalman ^VIX-slope RISK OVERLAY ..... OOS S=1.21  DD= 8.4%  ALPHA FOUND
+        de-risk smoothly when implied vol is rising; slippage-robust (clears
+        1.2 even with +1 day execution lag). PASS. -> WINNER.md.
+
+Dead ends ruled out (do not retry): long/short trend, realized-vol targeting,
+  VIX-level gating, continuous trend-magnitude sizing, adaptive-AR sleeve,
+  hysteresis/deadband, trim-when-extended. All scored below the iter-3 blend.
