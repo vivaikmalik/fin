@@ -6,3 +6,4 @@ backtests/results/*.json
 checker/verdict.json
 logs/*.log
 .venv/
+data/prod_state.json

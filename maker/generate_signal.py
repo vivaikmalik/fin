@@ -72,7 +72,11 @@ class KalmanTrendMR(Strategy):
     VIX_CUT = 0.6        # max de-risking when implied vol is rising fast
     BAND = 0.15          # position deadband: re-trade only on moves > 15% notional
 
-    def signal(self, prices: pd.DataFrame) -> pd.Series:
+    def components(self, prices: pd.DataFrame) -> pd.DataFrame:
+        """Per-bar internals + the raw (unshifted) target position. Single source
+        of truth for both the backtest and live trading. The LAST row is "today":
+        `target` is the position to hold next session (post-0.15 deadband).
+        signal() is just this, shifted one bar."""
         c = prices["close"].astype(float)
         logp = np.log(c.values)
 
@@ -90,12 +94,18 @@ class KalmanTrendMR(Strategy):
         vol = load_prices(VOL)["close"].reindex(c.index).ffill().bfill().values
         vslope = _llt_trend(vol, self.VIX_Q_LEVEL, self.VIX_Q_TREND, r=1.0)
         vstd = pd.Series(vslope, index=c.index).rolling(252, min_periods=60).std().bfill().values
-        risk = 1.0 - self.VIX_CUT * np.clip(vslope / vstd, 0.0, 1.0)  # in [0.4, 1.0]
+        vsn = np.clip(vslope / vstd, 0.0, 1.0)
+        risk = 1.0 - self.VIX_CUT * vsn                               # in [0.4, 1.0]
 
-        # 4. Deadband to cut turnover (survive 1 bp/turn friction), then shift 1
-        #    bar (trade next bar, no look-ahead).
-        pos = _deadband(np.clip(blend * risk, 0.0, 1.0), self.BAND)
-        return pd.Series(pos, index=c.index).shift(1).fillna(0.0)
+        # 4. Deadband to cut turnover (survive 1 bp/turn friction).
+        target = _deadband(np.clip(blend * risk, 0.0, 1.0), self.BAND)
+        return pd.DataFrame({"close": c.values, "trend": trend, "vix_slope": vslope,
+                             "vix_slope_norm": vsn, "blend": blend, "risk": risk,
+                             "target": target}, index=c.index)
+
+    def signal(self, prices: pd.DataFrame) -> pd.Series:
+        # Backtest view: shift 1 bar (trade next bar, no look-ahead).
+        return self.components(prices)["target"].shift(1).fillna(0.0)
 
 
 def main() -> None:

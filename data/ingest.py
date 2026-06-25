@@ -27,10 +27,13 @@ def _download(asset: str, start: str) -> pd.DataFrame:
     raise RuntimeError(f"yfinance returned no data for {asset}: {last}")
 
 
-def load_prices(asset: str = ASSET, start: str = "2005-01-01") -> pd.DataFrame:
+def load_prices(asset: str = ASSET, start: str = "2005-01-01",
+                refresh: bool = False) -> pd.DataFrame:
+    """Cached daily close for `asset`. refresh=True forces a fresh download
+    (used by prod_signal.py to pull today's latest bar)."""
     os.makedirs(CACHE, exist_ok=True)
     path = os.path.join(CACHE, f"{asset.replace('^', '')}.parquet")  # ^VIX -> VIX.parquet
-    if os.path.exists(path):
+    if os.path.exists(path) and not refresh:
         return pd.read_parquet(path)
     df = _download(asset, start)
     if isinstance(df.columns, pd.MultiIndex):
