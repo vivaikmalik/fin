@@ -1,15 +1,40 @@
 # STATE.md — Autonomous Quant System
 
-**Phase:** UNIVERSAL ALPHA ✅ — one frozen strategy clears both gates on SPY *and* QQQ
+**Phase:** UNIVERSAL ALPHA across **equities** ✅ — edge boundary mapped: NOT cross-asset-class
 **Last updated:** 2026-06-24
-**Target asset:** SPY (primary) + QQQ (OOD generalization test, ^VXN overlay)
-**Iteration:** 6 — **OOD asset test**: the FROZEN KalmanTrendMR (identical params
-+ 0.15 deadband, only the data swapped to QQQ/^VXN) scores **net OOS Sharpe 1.28,
-MaxDD 10.5% — PASS**. SPY is 1.24 / 8.4%. No mutation needed; the edge generalizes
-out-of-distribution → **STATUS: UNIVERSAL ALPHA**.
-*Iter-5:* 0.15 position deadband cut turnover 203→144 to survive 1 bp/turn
-friction (net Sharpe 1.24). *Iter-4 failure (recorded):* friction had dropped the
-no-deadband strategy to 1.197 < 1.2 (the continuous VIX scaler re-traded daily).
+**Target asset:** SPY + QQQ (both PASS) ; GLD (FAIL — defines the boundary)
+**Iteration:** 7 — **CROSS-ASSET test** on GLD/^GVZ. The FROZEN strategy (no
+mutation, per instruction) scores **OOS Sharpe 0.85 < 1.2** → RE-RUN. The edge is
+**equity-specific**; terminated without mutating. See "Edge Boundary" below.
+*Iter-6:* QQQ/^VXN OOD test PASSED (net Sharpe 1.28, MaxDD 10.5%) → UNIVERSAL
+ALPHA across equity indices. *Iter-5:* 0.15 deadband cut turnover 203→144 to
+survive 1 bp/turn friction (net Sharpe 1.24). *Iter-4:* friction had dropped the
+no-deadband strategy to 1.197 < 1.2.
+
+## Edge Boundary — Cross-Asset Test (GLD / ^GVZ), 2026-06-24
+FROZEN KalmanTrendMR (identical Kalman params + 0.15 deadband), only the data
+swapped to Gold. **No mutation** (test was strictly generalization). Net of 1
+bp/turn friction, OOS = 2019-01-02 … 2026-06-24 (1,879 bars):
+
+| Metric | GLD strategy | Gate | GLD buy&hold |
+|--------|-------------|------|--------------|
+| OOS Sharpe | **0.85** | ≥ 1.2 ❌ | 0.93 |
+| Max Drawdown | 13.6% | ≤ 15% ✅ | 26.2% |
+| OOS total return | +60% | — | +202% |
+| turnover | 151 | — | — |
+
+**Why it fails (the boundary):** the strategy's core alpha lever is the
+rising-implied-vol RISK-OFF overlay, which exploits the equity **leverage
+effect** — for SPY/QQQ, `corr(Δimplied-vol, return)` is strongly *negative*, so
+rising vol reliably precedes drawdowns. For **gold it is +0.21 (positive)**:
+gold often *rallies* as ^GVZ rises (safe-haven/crisis bid). The overlay therefore
+de-risks into gold's rallies, and the strategy's Sharpe (0.85) falls *below* even
+gold buy&hold (0.93) — it adds no value on this asset class. Drawdown control
+still works (13.6%), but the return engine does not transfer.
+
+**Conclusion:** the edge generalizes across **equity indices** (SPY↔QQQ) but
+**not across asset classes** (commodities/gold). It is a risk-managed *equity*
+trend/mean-reversion strategy, not a universal one.
 
 ---
 
